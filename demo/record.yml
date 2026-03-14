@@ -1,0 +1,52 @@
+# Terminalizer config for spec2cli demo
+config:
+  command: bash
+  cwd: /Users/lucianfialho/Code/tocli
+  env:
+    recording: true
+  cols: 90
+  rows: 25
+  repeat: 0
+  quality: 100
+  frameDelay: auto
+  maxIdleTime: 1500
+  frameBox:
+    type: floating
+    title: spec2cli
+    style:
+      boxShadow: none
+      margin: 0px
+  watermark:
+    imagePath: null
+  theme:
+    background: "#1e1e2e"
+    foreground: "#cdd6f4"
+    cursor: "#f5e0dc"
+    black: "#45475a"
+    red: "#f38ba8"
+    green: "#a6e3a1"
+    yellow: "#f9e2af"
+    blue: "#89b4fa"
+    magenta: "#cba6f7"
+    cyan: "#94e2d5"
+    white: "#bac2de"
+
+records:
+  - delay: 500
+    content: "$ npx spec2cli use petstore pet --help\r\n"
+  - delay: 2000
+    content: "Usage: spec2cli pet [options] [command]\r\n\r\nEverything about your Pets\r\n\r\nOptions:\r\n  -h, --help                   display help for command\r\n\r\nCommands:\r\n  add [options]                Add a new pet to the store.\r\n  update [options]             Update an existing pet.\r\n  findpetsbystatus [options]   Finds Pets by status.\r\n  getpetbyid [options]         Find pet by ID.\r\n  delete [options]             Deletes a pet.\r\n  help [command]               display help for command\r\n"
+  - delay: 1500
+    content: "\r\n$ npx spec2cli use petstore pet findpetsbystatus --status available --output table --max-items 5\r\n"
+  - delay: 2500
+    content: "id      name              status\r\n──────────────────────────────────\r\n5925    Pet5925           available\r\n5409    Pet5409           available\r\n3795    Pet3795           available\r\n8911    Pet8911           available\r\n5462    Pet5462           available\r\n"
+  - delay: 1500
+    content: "\r\n$ npx spec2cli use petstore pet getpetbyid --petId 5925 --output yaml\r\n"
+  - delay: 2000
+    content: "id: 5925\r\ncategory:\r\n  id: 1\r\n  name: dogs\r\nname: Pet5925\r\nstatus: available\r\ntags:\r\n  - id: 1\r\n    name: friendly\r\n"
+  - delay: 1500
+    content: "\r\n$ npx spec2cli search payments\r\n"
+  - delay: 1000
+    content: "Found 1 API matching 'payments':\r\n\r\n  stripe   Stripe API — payments, subscriptions, invoices  (STRIPE_SECRET_KEY)\r\n           tags: payments, fintech, billing\r\n\r\nUsage: spec2cli use <name> <group> <command> [--flags]\r\n"
+  - delay: 2000
+    content: "\r\n"

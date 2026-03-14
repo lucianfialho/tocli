@@ -2,12 +2,16 @@
 
 **Turn any OpenAPI spec into a CLI. No code generation, no build step.**
 
+<p align="center">
+  <img src="demo/demo.gif" alt="spec2cli demo" width="800">
+</p>
+
 ```bash
 npx spec2cli --spec ./api.yaml pets list --status available
 npx spec2cli --spec ./api.yaml pets create --name Rex --token sk-123
 ```
 
-spec2cli reads an OpenAPI 3.x spec at runtime and dynamically generates a fully functional CLI with commands, flags, auth, and formatted output.
+spec2cli reads OpenAPI 3.x and Swagger 2.0 specs at runtime and dynamically generates a fully functional CLI with commands, flags, auth, and formatted output.
 
 ## Quick start
 
