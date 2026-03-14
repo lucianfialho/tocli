@@ -125,34 +125,96 @@ async function handleSearch(args: string[]): Promise<void> {
 }
 
 async function handleAdd(args: string[]): Promise<void> {
-  // spec2cli add <name> --spec <url> --base-url <url> [--auth-type bearer] [--auth-env VAR]
+  const fromUrl = getFlagValue(args, "--from");
+
+  // Mode 1: Import from remote registry URL
+  // spec2cli add --from https://mycompany.com/apis.json
+  if (fromUrl) {
+    await addFromRemoteRegistry(fromUrl);
+    return;
+  }
+
   const name = args[0];
   if (!name || name.startsWith("--")) {
-    console.error("Usage: spec2cli add <name> --spec <url> --base-url <url> [--auth-type bearer] [--auth-env VAR]");
-    console.error("Example: spec2cli add myapi --spec https://api.example.com/openapi.json --base-url https://api.example.com\n");
+    console.error("Usage:");
+    console.error("  spec2cli add <name> --spec <path-or-url> [--base-url <url>] [--auth-type bearer] [--auth-env VAR]");
+    console.error("  spec2cli add --from <registry-url>    Import APIs from a remote registry JSON\n");
+    console.error("Examples:");
+    console.error("  spec2cli add myapi --spec https://api.example.com/openapi.json --base-url https://api.example.com");
+    console.error("  spec2cli add myapi --spec ./openapi.yaml --base-url http://localhost:3000");
+    console.error("  spec2cli add --from https://mycompany.com/apis.json\n");
     process.exit(1);
   }
 
-  const specUrl = getFlagValue(args, "--spec");
-  const baseUrl = getFlagValue(args, "--base-url");
-  if (!specUrl) {
+  const specSource = getFlagValue(args, "--spec");
+  if (!specSource) {
     console.error("Error: --spec is required.\n");
-    console.error("Usage: spec2cli add <name> --spec <url> --base-url <url>");
+    console.error("  spec2cli add <name> --spec <path-or-url> [--base-url <url>]");
     process.exit(1);
   }
+
+  // Resolve local file to absolute path
+  const { resolve } = await import("node:path");
+  const isUrl = specSource.startsWith("http://") || specSource.startsWith("https://");
+  const specValue = isUrl ? specSource : resolve(specSource);
+
+  const baseUrl = getFlagValue(args, "--base-url");
 
   await addLocalApi({
     name,
     description: getFlagValue(args, "--description") ?? `Custom API: ${name}`,
     categories: ["custom"],
-    specUrl,
-    baseUrl: baseUrl ?? specUrl.replace(/\/openapi\.(json|yaml)$/, ""),
+    specUrl: specValue,
+    baseUrl: baseUrl ?? (isUrl ? specSource.replace(/\/openapi\.(json|yaml)$/, "") : "http://localhost:3000"),
     authType: (getFlagValue(args, "--auth-type") ?? "none") as "bearer" | "apiKey" | "none",
     authEnvVar: getFlagValue(args, "--auth-env") ?? "",
   });
 
   console.log(`Added '${name}' to local registry.`);
   console.log(`Use it: spec2cli use ${name} --help\n`);
+}
+
+async function addFromRemoteRegistry(url: string): Promise<void> {
+  console.log(`Fetching registry from ${url}...`);
+
+  try {
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.error(`Failed to fetch: ${res.status} ${res.statusText}`);
+      process.exit(1);
+    }
+
+    const data = await res.json();
+    const apis = Array.isArray(data) ? data : data.apis ?? [];
+
+    if (apis.length === 0) {
+      console.error("No APIs found in the registry.");
+      process.exit(1);
+    }
+
+    let added = 0;
+    for (const api of apis) {
+      if (api.name && api.specUrl) {
+        await addLocalApi({
+          name: api.name,
+          description: api.description ?? `Imported: ${api.name}`,
+          categories: api.categories ?? ["imported"],
+          specUrl: api.specUrl,
+          baseUrl: api.baseUrl ?? "",
+          authType: api.authType ?? "none",
+          authEnvVar: api.authEnvVar ?? "",
+          docs: api.docs,
+        });
+        added++;
+        console.log(`  + ${api.name}`);
+      }
+    }
+
+    console.log(`\nImported ${added} API${added !== 1 ? "s" : ""} from registry.`);
+  } catch (err) {
+    console.error(`Error: ${(err as Error).message}`);
+    process.exit(1);
+  }
 }
 
 async function handleRemove(args: string[]): Promise<void> {
