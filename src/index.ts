@@ -6,6 +6,7 @@ import { extractOperations } from "./parser/extractor.js";
 import { generateManifest } from "./discovery/manifest.js";
 import { generateGroupDetail } from "./discovery/group.js";
 import { generateCommandSchema } from "./discovery/command.js";
+import { shouldUseFullDiscovery, generateFullDiscovery } from "./discovery/full.js";
 import { executeRequest } from "./executor/http.js";
 import { formatOutput } from "./output/formatters.js";
 import { registerAuthCommands } from "./auth/commands.js";
@@ -169,7 +170,12 @@ async function handleDiscover(specPath: string, args: string[]) {
   const groups = extractOperations(spec);
 
   if (args.length === 0) {
-    console.log(JSON.stringify(generateManifest(groups, spec.info)));
+    // Auto-detect: small APIs get full discovery in one call
+    if (shouldUseFullDiscovery(groups)) {
+      console.log(JSON.stringify(generateFullDiscovery(groups, spec.info, spec)));
+    } else {
+      console.log(JSON.stringify(generateManifest(groups, spec.info)));
+    }
     return;
   }
 

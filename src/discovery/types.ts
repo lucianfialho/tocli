@@ -43,3 +43,31 @@ export interface CommandParam {
   enum?: string[];
   default?: unknown;
 }
+
+export interface FullDiscovery {
+  name: string;
+  version: string;
+  description: string;
+  groups: FullGroup[];
+  _meta: {
+    protocol: string;
+    total_commands: number;
+    mode: "full";
+  };
+}
+
+export interface FullGroup {
+  name: string;
+  description: string;
+  commands: FullCommand[];
+}
+
+export interface FullCommand {
+  name: string;
+  description: string;
+  method: string;
+  hint: "read-only" | "write" | "destructive";
+  args?: string[];
+  params: CommandParam[];
+  auth: { required: boolean; scheme: string };
+}
