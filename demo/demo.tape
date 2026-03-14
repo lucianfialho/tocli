@@ -1,54 +1,54 @@
 # VHS demo tape for spec2cli
-# Run: vhs demo/demo.tape
+# Run: node examples/todo-api/server.mjs & sleep 1 && vhs demo/demo.tape
 
 Output demo/demo.gif
-Output demo/demo.webm
 
 Set Shell "bash"
-Set FontSize 14
-Set Width 1000
-Set Height 600
+Set FontSize 15
+Set Width 900
+Set Height 550
 Set Theme "Catppuccin Mocha"
-Set Padding 20
+Set Padding 15
+Set TypingSpeed 40ms
 
-Type "# Explore any API instantly"
+# Title
+Type "# spec2cli — Turn any API into a CLI"
 Enter
-Sleep 500ms
+Sleep 1s
 
-Type "npx spec2cli use petstore pet --help"
+# Help
+Type "node dist/index.js --spec examples/todo-api/openapi.yaml --help"
+Enter
+Sleep 2.5s
+
+# List with table
+Type "node dist/index.js --spec examples/todo-api/openapi.yaml --base-url http://localhost:4000 --output table todos list"
+Enter
+Sleep 2.5s
+
+# Filter
+Type "node dist/index.js --spec examples/todo-api/openapi.yaml --base-url http://localhost:4000 --output table todos list --status pending"
+Enter
+Sleep 2.5s
+
+# Get single item as YAML
+Type "node dist/index.js --spec examples/todo-api/openapi.yaml --base-url http://localhost:4000 --output yaml todos get --id 1"
+Enter
+Sleep 2.5s
+
+# Create with auth
+Type "node dist/index.js --spec examples/todo-api/openapi.yaml --base-url http://localhost:4000 --token test-token-123 --output json todos create --title 'Ship spec2cli v1' --priority high"
+Enter
+Sleep 2.5s
+
+# Search registry
+Type "node dist/index.js search payments"
+Enter
+Sleep 2.5s
+
+# Agent help
+Type "node dist/index.js --spec examples/todo-api/openapi.yaml --agent-help"
 Enter
 Sleep 4s
 
-Type "# List pets with table output"
-Enter
-Sleep 500ms
-
-Type "npx spec2cli use petstore pet findpetsbystatus --status available --output table --max-items 5"
-Enter
-Sleep 5s
-
-Type "# Get a pet as YAML"
-Enter
-Sleep 500ms
-
-Type "npx spec2cli --spec test/fixtures/petstore.yaml --output yaml pets get --petId 1 --base-url https://petstore3.swagger.io/api/v3"
-Enter
-Sleep 4s
-
-Type "# Search the API registry"
-Enter
-Sleep 500ms
-
-Type "npx spec2cli search payments"
-Enter
-Sleep 3s
-
-Type "# AI agent help — everything in one call"
-Enter
-Sleep 500ms
-
-Type "npx spec2cli --spec test/fixtures/petstore.yaml --agent-help"
-Enter
-Sleep 5s
-
-Sleep 2s
+Sleep 1s
