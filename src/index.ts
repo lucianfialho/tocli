@@ -147,7 +147,7 @@ function buildDynamicCommands(
           }
 
           const formatted = formatOutput(result.data, {
-            format: config.output as "json" | "pretty" | "table" | "quiet",
+            format: config.output as "json" | "pretty" | "table" | "yaml" | "quiet",
             maxItems: config.maxItems,
           });
           if (formatted) console.log(formatted);

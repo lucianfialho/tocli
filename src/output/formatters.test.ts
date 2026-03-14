@@ -49,6 +49,13 @@ describe("formatOutput", () => {
     expect(parsed[1].name).toBe("Luna");
   });
 
+  it("yaml mode outputs YAML", () => {
+    const result = formatOutput(sampleArray, { format: "yaml" });
+    expect(result).toContain("name: Rex");
+    expect(result).toContain("status: available");
+    expect(result).toContain("- id: 1");
+  });
+
   it("maxItems does not truncate when under limit", () => {
     const result = formatOutput(sampleArray, { format: "json", maxItems: 10 });
     const parsed = JSON.parse(result);

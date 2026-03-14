@@ -1,5 +1,7 @@
+import { stringify as toYaml } from "yaml";
+
 export interface OutputOptions {
-  format: "json" | "pretty" | "table" | "quiet";
+  format: "json" | "pretty" | "table" | "yaml" | "quiet";
   maxItems?: number;
 }
 
@@ -20,6 +22,8 @@ export function formatOutput(data: unknown, options: OutputOptions): string {
       return colorize(JSON.stringify(processed, null, 2));
     case "table":
       return formatTable(processed);
+    case "yaml":
+      return toYaml(processed);
     default:
       return JSON.stringify(processed, null, 2);
   }
