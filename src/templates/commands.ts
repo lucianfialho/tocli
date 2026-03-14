@@ -1,6 +1,7 @@
 import type { Command } from "commander";
 import { execSync } from "node:child_process";
-import { fetchRegistry, getTemplate, searchTemplates } from "./registry.js";
+import { fetchRegistry, getAllTemplates, getTemplate, searchTemplates } from "./registry.js";
+import { addLocalApi, removeLocalApi, loadLocalApis } from "./local.js";
 
 export function registerUseCommand(program: Command): void {
   const originalParse = program.parse.bind(program);
@@ -15,6 +16,16 @@ export function registerUseCommand(program: Command): void {
 
     if (args[0] === "search") {
       handleSearch(args.slice(1));
+      return program;
+    }
+
+    if (args[0] === "add") {
+      handleAdd(args.slice(1));
+      return program;
+    }
+
+    if (args[0] === "remove") {
+      handleRemove(args.slice(1));
       return program;
     }
 
@@ -113,10 +124,64 @@ async function handleSearch(args: string[]): Promise<void> {
   console.log(`\nUsage: spec2cli use <name> <group> <command> [--flags]`);
 }
 
+async function handleAdd(args: string[]): Promise<void> {
+  // spec2cli add <name> --spec <url> --base-url <url> [--auth-type bearer] [--auth-env VAR]
+  const name = args[0];
+  if (!name || name.startsWith("--")) {
+    console.error("Usage: spec2cli add <name> --spec <url> --base-url <url> [--auth-type bearer] [--auth-env VAR]");
+    console.error("Example: spec2cli add myapi --spec https://api.example.com/openapi.json --base-url https://api.example.com\n");
+    process.exit(1);
+  }
+
+  const specUrl = getFlagValue(args, "--spec");
+  const baseUrl = getFlagValue(args, "--base-url");
+  if (!specUrl) {
+    console.error("Error: --spec is required.\n");
+    console.error("Usage: spec2cli add <name> --spec <url> --base-url <url>");
+    process.exit(1);
+  }
+
+  await addLocalApi({
+    name,
+    description: getFlagValue(args, "--description") ?? `Custom API: ${name}`,
+    categories: ["custom"],
+    specUrl,
+    baseUrl: baseUrl ?? specUrl.replace(/\/openapi\.(json|yaml)$/, ""),
+    authType: (getFlagValue(args, "--auth-type") ?? "none") as "bearer" | "apiKey" | "none",
+    authEnvVar: getFlagValue(args, "--auth-env") ?? "",
+  });
+
+  console.log(`Added '${name}' to local registry.`);
+  console.log(`Use it: spec2cli use ${name} --help\n`);
+}
+
+async function handleRemove(args: string[]): Promise<void> {
+  const name = args[0];
+  if (!name) {
+    console.error("Usage: spec2cli remove <name>");
+    process.exit(1);
+  }
+
+  const removed = await removeLocalApi(name);
+  if (removed) {
+    console.log(`Removed '${name}' from local registry.`);
+  } else {
+    console.error(`'${name}' not found in local registry. Only custom APIs can be removed.`);
+    process.exit(1);
+  }
+}
+
+function getFlagValue(args: string[], flag: string): string | undefined {
+  const idx = args.indexOf(flag);
+  return idx !== -1 && idx + 1 < args.length ? args[idx + 1] : undefined;
+}
+
 async function printTemplateList(): Promise<void> {
   console.log("Fetching API registry...\n");
 
-  const templates = await fetchRegistry();
+  const templates = await getAllTemplates();
+  const localApis = await loadLocalApis();
+  const localNames = new Set(localApis.map((a) => a.name));
 
   if (templates.length === 0) {
     console.log("No APIs available. Registry may be unreachable.");
@@ -128,10 +193,12 @@ async function printTemplateList(): Promise<void> {
   const maxName = Math.max(...templates.map((t) => t.name.length));
   for (const t of templates) {
     const auth = t.authEnvVar ? `  (${t.authEnvVar})` : "";
-    console.log(`  ${t.name.padEnd(maxName + 2)} ${t.description}${auth}`);
+    const local = localNames.has(t.name) ? " [local]" : "";
+    console.log(`  ${t.name.padEnd(maxName + 2)} ${t.description}${auth}${local}`);
   }
 
   console.log(`\nUsage: spec2cli use <api> <group> <command> [--flags]`);
   console.log(`Search: spec2cli search <query>`);
+  console.log(`Add your own: spec2cli add <name> --spec <url> --base-url <url>`);
   console.log(`Contribute: https://github.com/lucianfialho/spec2cli-registry`);
 }

@@ -103,13 +103,24 @@ function getBuiltinDefaults(): Template[] {
   ];
 }
 
+export async function getAllTemplates(): Promise<Template[]> {
+  const { loadLocalApis } = await import("./local.js");
+  const [remote, local] = await Promise.all([fetchRegistry(), loadLocalApis()]);
+
+  // Local overrides remote if same name
+  const merged = new Map<string, Template>();
+  for (const t of remote) merged.set(t.name, t);
+  for (const t of local) merged.set(t.name, { ...t, _local: true } as Template & { _local: boolean });
+  return [...merged.values()];
+}
+
 export async function getTemplate(name: string): Promise<Template | undefined> {
-  const templates = await fetchRegistry();
+  const templates = await getAllTemplates();
   return templates.find((t) => t.name === name);
 }
 
 export async function searchTemplates(query: string): Promise<Template[]> {
-  const templates = await fetchRegistry();
+  const templates = await getAllTemplates();
   const q = query.toLowerCase();
   return templates.filter(
     (t) =>
