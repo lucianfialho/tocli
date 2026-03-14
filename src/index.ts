@@ -30,7 +30,7 @@ async function main() {
 
   // Handle static commands directly
   const firstArg = rawArgs[0];
-  if (firstArg === "auth" || firstArg === "init" || firstArg === "use") {
+  if (firstArg === "auth" || firstArg === "init" || firstArg === "use" || firstArg === "search") {
     program.parse(process.argv);
     return;
   }
