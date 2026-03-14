@@ -152,8 +152,8 @@ tocli --spec api.yaml --verbose pets get --petId 1
 ## Development
 
 ```bash
-git clone https://github.com/lucianfialho/mcp-c
-cd mcp-c
+git clone https://github.com/lucianfialho/tocli
+cd tocli
 npm install
 npm run build
 npm test
