@@ -119,6 +119,13 @@ function buildHeaders(
     case "basic":
       headers["Authorization"] = `Basic ${Buffer.from(auth.value).toString("base64")}`;
       break;
+    case "headers":
+      if (auth.headers) {
+        for (const [k, v] of Object.entries(auth.headers)) {
+          headers[k] = v;
+        }
+      }
+      break;
   }
 
   return headers;

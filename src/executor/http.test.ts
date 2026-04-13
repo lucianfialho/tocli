@@ -138,6 +138,32 @@ describe("executeRequest", () => {
     vi.unstubAllGlobals();
   });
 
+  it("sets multiple headers for multi-header auth (VTEX-style)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      status: 200,
+      statusText: "OK",
+      headers: new Map([["content-type", "application/json"]]),
+      text: () => Promise.resolve(JSON.stringify({})),
+    }));
+
+    const auth: AuthConfig = {
+      type: "headers",
+      value: "",
+      headers: {
+        "X-VTEX-API-AppKey": "my-key",
+        "X-VTEX-API-AppToken": "my-token",
+      },
+    };
+    await executeRequest(makeOp(), {}, auth, BASE_URL);
+
+    const callArgs = (fetch as ReturnType<typeof vi.fn>).mock.calls[0];
+    const headers = (callArgs[1] as RequestInit).headers as Record<string, string>;
+    expect(headers["X-VTEX-API-AppKey"]).toBe("my-key");
+    expect(headers["X-VTEX-API-AppToken"]).toBe("my-token");
+
+    vi.unstubAllGlobals();
+  });
+
   it("returns status, headers, and parsed data", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
       status: 200,

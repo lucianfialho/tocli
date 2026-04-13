@@ -6,6 +6,7 @@ export interface AuthFlags {
   token?: string;
   apiKey?: string;
   authHeader?: string;
+  headers?: Record<string, string>;
   profile?: string;
   rcAuthType?: string;
   rcAuthToken?: string;
@@ -18,6 +19,13 @@ export async function resolveAuth(
   env: NodeJS.ProcessEnv = process.env
 ): Promise<AuthConfig> {
   // Priority 1: Inline flags
+  if (flags.headers && Object.keys(flags.headers).length > 0) {
+    const resolved: Record<string, string> = {};
+    for (const [k, v] of Object.entries(flags.headers)) {
+      resolved[k] = resolveEnvVar(v, env);
+    }
+    return { type: "headers", value: "", headers: resolved };
+  }
   if (flags.token) {
     return { type: "bearer", value: resolveEnvVar(flags.token, env) };
   }
@@ -58,6 +66,13 @@ export async function resolveAuth(
   const profileName = flags.profile ?? "default";
   const profile = await getProfile(profileName);
   if (profile) {
+    if (profile.type === "headers" && profile.headers) {
+      const resolved: Record<string, string> = {};
+      for (const [k, v] of Object.entries(profile.headers)) {
+        resolved[k] = resolveEnvVar(v, env);
+      }
+      return { type: "headers", value: "", headers: resolved };
+    }
     return {
       type: profile.type,
       value: resolveEnvVar(profile.value, env),
@@ -106,4 +121,19 @@ function resolveEnvVar(value: string, env: NodeJS.ProcessEnv): string {
     const name = braced ?? plain;
     return env[name] ?? "";
   });
+}
+
+/**
+ * Detect all apiKey header schemes. Used for multi-header auth detection (e.g. VTEX).
+ */
+export function detectApiKeyHeaders(spec: OpenAPISpec): string[] {
+  const schemes = spec.components?.securitySchemes;
+  if (!schemes) return [];
+  const names: string[] = [];
+  for (const scheme of Object.values(schemes)) {
+    if (scheme.type === "apiKey" && scheme.in === "header" && scheme.name) {
+      names.push(scheme.name);
+    }
+  }
+  return names;
 }

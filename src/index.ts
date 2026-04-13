@@ -33,6 +33,7 @@ Flags:
   --dry-run                 Preview the HTTP request without executing
   --validate                Validate response against the OpenAPI schema
   --agent-help              Compact YAML with all commands, params, and auth
+  --header "Name: Value"    Send a custom auth header (repeatable, for APIs like VTEX)
 
 Examples:
   spec2cli --spec ./api.yaml pets list
@@ -104,6 +105,7 @@ async function main() {
       {
         token: getFlagValue(rawArgs, "--token"),
         apiKey: getFlagValue(rawArgs, "--api-key"),
+        headers: parseHeaderArgs(rawArgs),
         profile: getFlagValue(rawArgs, "--profile"),
         rcAuthType,
         rcAuthToken,
@@ -249,6 +251,10 @@ function printDryRun(op: import("./parser/types.js").Operation, params: Record<s
     headers.push(`Authorization: Bearer ${config.auth.value}`);
   } else if (config.auth.type === "apiKey") {
     headers.push(`${config.auth.headerName ?? "X-API-Key"}: ${config.auth.value}`);
+  } else if (config.auth.type === "headers" && config.auth.headers) {
+    for (const [k, v] of Object.entries(config.auth.headers)) {
+      headers.push(`${k}: ${v}`);
+    }
   }
 
   // Body
@@ -334,6 +340,19 @@ function resolveAuthHint(spec: OpenAPISpec): string {
   const schemes = spec.components?.securitySchemes;
   if (!schemes) return "none";
 
+  // Collect all apiKey headers — if there's more than one, recommend --header flags
+  const apiKeyHeaders: string[] = [];
+  for (const scheme of Object.values(schemes)) {
+    if (scheme.type === "apiKey" && scheme.in === "header" && scheme.name) {
+      apiKeyHeaders.push(scheme.name);
+    }
+  }
+
+  if (apiKeyHeaders.length > 1) {
+    const parts = apiKeyHeaders.map((h) => `--header "${h}: <value>"`).join(" ");
+    return `multi-header ${parts}`;
+  }
+
   for (const scheme of Object.values(schemes)) {
     if (scheme.type === "http" && scheme.scheme === "bearer") return "bearer --token <TOKEN>";
     if (scheme.type === "apiKey") return `apiKey --api-key <KEY> (header: ${scheme.name})`;
@@ -385,13 +404,44 @@ function simplifyName(operationId: string, tag: string): string {
   return operationId.toLowerCase();
 }
 
+function parseHeaderArgs(args: string[]): Record<string, string> | undefined {
+  const raws = getFlagValues(args, "--header").concat(getFlagValues(args, "-H"));
+  if (raws.length === 0) return undefined;
+  const headers: Record<string, string> = {};
+  for (const raw of raws) {
+    const idx = raw.indexOf(":");
+    if (idx === -1) {
+      console.error(`Error: invalid --header '${raw}'. Expected "Name: Value".`);
+      process.exit(1);
+    }
+    const name = raw.slice(0, idx).trim();
+    const value = raw.slice(idx + 1).trim();
+    if (!name) {
+      console.error(`Error: invalid --header '${raw}'. Missing name.`);
+      process.exit(1);
+    }
+    headers[name] = value;
+  }
+  return headers;
+}
+
 function getFlagValue(args: string[], flag: string): string | undefined {
   const idx = args.indexOf(flag);
   return idx !== -1 && idx + 1 < args.length ? args[idx + 1] : undefined;
 }
 
+function getFlagValues(args: string[], flag: string): string[] {
+  const values: string[] = [];
+  for (let i = 0; i < args.length; i++) {
+    if (args[i] === flag && i + 1 < args.length) {
+      values.push(args[i + 1]);
+    }
+  }
+  return values;
+}
+
 function filterTocliFlags(argv: string[]): string[] {
-  const valueFlags = new Set(["--spec", "--output", "--max-items", "--token", "--api-key", "--base-url", "--profile", "--env"]);
+  const valueFlags = new Set(["--spec", "--output", "--max-items", "--token", "--api-key", "--base-url", "--profile", "--env", "--header", "-H"]);
   const boolFlags = new Set(["--verbose", "--quiet", "--dry-run", "--validate", "--agent-help"]);
   const result: string[] = [];
   let i = 0;

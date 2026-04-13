@@ -1,7 +1,8 @@
 export interface AuthConfig {
-  type: "bearer" | "apiKey" | "basic" | "none";
+  type: "bearer" | "apiKey" | "basic" | "headers" | "none";
   value: string;
   headerName?: string;
+  headers?: Record<string, string>;
 }
 
 export interface HttpResponse {
