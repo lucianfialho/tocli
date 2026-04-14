@@ -1,5 +1,6 @@
 import type { Operation } from "../parser/types.js";
 import type { AuthConfig, HttpResponse } from "./types.js";
+import { maskToken } from "../auth/config.js";
 
 export async function executeRequest(
   op: Operation,
@@ -14,9 +15,10 @@ export async function executeRequest(
   const method = op.method;
 
   if (verbose) {
+    const authNames = authHeaderNames(auth);
     console.error(`→ ${method} ${url}`);
     for (const [k, v] of Object.entries(headers)) {
-      const display = k.toLowerCase() === "authorization" ? `${v.slice(0, 15)}...` : v;
+      const display = authNames.has(k.toLowerCase()) ? maskToken(v) : v;
       console.error(`  ${k}: ${display}`);
     }
     if (body) {
@@ -129,6 +131,25 @@ function buildHeaders(
   }
 
   return headers;
+}
+
+function authHeaderNames(auth: AuthConfig): Set<string> {
+  const names = new Set<string>();
+  switch (auth.type) {
+    case "bearer":
+    case "basic":
+      names.add("authorization");
+      break;
+    case "apiKey":
+      names.add((auth.headerName ?? "X-API-Key").toLowerCase());
+      break;
+    case "headers":
+      if (auth.headers) {
+        for (const name of Object.keys(auth.headers)) names.add(name.toLowerCase());
+      }
+      break;
+  }
+  return names;
 }
 
 function buildBody(
