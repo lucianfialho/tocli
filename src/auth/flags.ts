@@ -22,25 +22,25 @@ export async function resolveAuth(
   if (flags.headers && Object.keys(flags.headers).length > 0) {
     const resolved: Record<string, string> = {};
     for (const [k, v] of Object.entries(flags.headers)) {
-      resolved[k] = resolveEnvVar(v, env);
+      resolved[k] = resolveEnvVar(v, env, `--header "${k}"`);
     }
     return { type: "headers", value: "", headers: resolved };
   }
   if (flags.token) {
-    return { type: "bearer", value: resolveEnvVar(flags.token, env) };
+    return { type: "bearer", value: resolveEnvVar(flags.token, env, "--token") };
   }
   if (flags.apiKey) {
     const headerName = detectApiKeyHeader(spec) ?? "X-API-Key";
-    return { type: "apiKey", value: resolveEnvVar(flags.apiKey, env), headerName };
+    return { type: "apiKey", value: resolveEnvVar(flags.apiKey, env, "--api-key"), headerName };
   }
   if (flags.authHeader) {
-    return { type: "bearer", value: resolveEnvVar(flags.authHeader, env) };
+    return { type: "bearer", value: resolveEnvVar(flags.authHeader, env, "--auth-header") };
   }
 
   // Priority 2: .toclirc auth config
   if (flags.rcAuthToken) {
     const type = (flags.rcAuthType as AuthConfig["type"]) ?? "bearer";
-    return { type, value: resolveEnvVar(flags.rcAuthToken, env) };
+    return { type, value: resolveEnvVar(flags.rcAuthToken, env, ".toclirc auth.token") };
   }
   if (flags.rcAuthEnvVar) {
     const envVal = env[flags.rcAuthEnvVar];
@@ -69,13 +69,13 @@ export async function resolveAuth(
     if (profile.type === "headers" && profile.headers) {
       const resolved: Record<string, string> = {};
       for (const [k, v] of Object.entries(profile.headers)) {
-        resolved[k] = resolveEnvVar(v, env);
+        resolved[k] = resolveEnvVar(v, env, `profile '${profileName}' header "${k}"`);
       }
       return { type: "headers", value: "", headers: resolved };
     }
     return {
       type: profile.type,
-      value: resolveEnvVar(profile.value, env),
+      value: resolveEnvVar(profile.value, env, `profile '${profileName}'`),
       headerName: profile.headerName,
     };
   }
@@ -115,11 +115,19 @@ function detectApiKeyHeader(spec: OpenAPISpec): string | undefined {
   return undefined;
 }
 
-function resolveEnvVar(value: string, env: NodeJS.ProcessEnv): string {
-  // Replace $VAR or ${VAR} with env values
+function resolveEnvVar(value: string, env: NodeJS.ProcessEnv, context?: string): string {
+  // Replace $VAR or ${VAR} with env values. Warn when a reference resolves to empty —
+  // silent empty headers confuse downstream 401s ("auth wrong" when it's "env unset").
   return value.replace(/\$\{([^}]+)\}|\$([A-Z_][A-Z0-9_]*)/g, (_, braced, plain) => {
     const name = braced ?? plain;
-    return env[name] ?? "";
+    const resolved = env[name];
+    if (resolved === undefined || resolved === "") {
+      console.error(
+        `Warning: env var $${name} is ${resolved === undefined ? "unset" : "empty"}${context ? ` (used in ${context})` : ""}.`
+      );
+      return "";
+    }
+    return resolved;
   });
 }
 

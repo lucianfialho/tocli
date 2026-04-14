@@ -7,6 +7,7 @@ import { executeRequest } from "./executor/http.js";
 import { formatOutput } from "./output/formatters.js";
 import { registerAuthCommands } from "./auth/commands.js";
 import { resolveAuth as resolveAuthFromFlags } from "./auth/flags.js";
+import { parseHeaderFlag } from "./auth/headers.js";
 import { registerInitCommand } from "./config/init.js";
 import { registerUseCommand } from "./templates/commands.js";
 import { loadConfig, resolveConfig } from "./config/rc.js";
@@ -409,18 +410,12 @@ function parseHeaderArgs(args: string[]): Record<string, string> | undefined {
   if (raws.length === 0) return undefined;
   const headers: Record<string, string> = {};
   for (const raw of raws) {
-    const idx = raw.indexOf(":");
-    if (idx === -1) {
-      console.error(`Error: invalid --header '${raw}'. Expected "Name: Value".`);
+    const parsed = parseHeaderFlag(raw);
+    if (!parsed) {
+      console.error(`Error: invalid --header '${raw}'. Expected "Name: Value" with RFC-valid name and no CR/LF.`);
       process.exit(1);
     }
-    const name = raw.slice(0, idx).trim();
-    const value = raw.slice(idx + 1).trim();
-    if (!name) {
-      console.error(`Error: invalid --header '${raw}'. Missing name.`);
-      process.exit(1);
-    }
-    headers[name] = value;
+    headers[parsed.name] = parsed.value;
   }
   return headers;
 }

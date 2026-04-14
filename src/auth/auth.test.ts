@@ -192,6 +192,18 @@ describe("parseHeaderFlag", () => {
   it("returns null for empty name", () => {
     expect(parseHeaderFlag(": value")).toBeNull();
   });
+
+  it("rejects CR/LF in value (header injection)", () => {
+    expect(parseHeaderFlag("X-Key: bad\r\nEvil: yes")).toBeNull();
+    expect(parseHeaderFlag("X-Key: bad\nEvil: yes")).toBeNull();
+    expect(parseHeaderFlag("X-Key: bad\rEvil: yes")).toBeNull();
+  });
+
+  it("rejects invalid characters in header name", () => {
+    expect(parseHeaderFlag("X Key: v")).toBeNull();
+    expect(parseHeaderFlag("X\tKey: v")).toBeNull();
+    expect(parseHeaderFlag("X:Key: v")).toEqual({ name: "X", value: "Key: v" });
+  });
 });
 
 describe("detectApiKeyHeaders", () => {
@@ -270,6 +282,32 @@ describe("resolveAuth with multi-header", () => {
     const auth = await resolveAuth({ headers: {}, token: "sk-1" }, minimalSpec, {});
     expect(auth.type).toBe("bearer");
     expect(auth.value).toBe("sk-1");
+  });
+
+  it("warns to stderr when $VAR in header resolves to empty", async () => {
+    const stderr = vi.spyOn(console, "error").mockImplementation(() => {});
+    const auth = await resolveAuth(
+      { headers: { "X-VTEX-API-AppKey": "$MISSING_VAR" } },
+      specDualHeader,
+      {}
+    );
+    expect(auth.headers?.["X-VTEX-API-AppKey"]).toBe("");
+    const logged = stderr.mock.calls.map((c) => String(c[0])).join("\n");
+    expect(logged).toMatch(/Warning.*MISSING_VAR.*unset/);
+    expect(logged).toContain("X-VTEX-API-AppKey");
+    stderr.mockRestore();
+  });
+
+  it("warns when $VAR resolves to empty string", async () => {
+    const stderr = vi.spyOn(console, "error").mockImplementation(() => {});
+    await resolveAuth(
+      { headers: { "X-Key": "$EMPTY_VAR" } },
+      specDualHeader,
+      { EMPTY_VAR: "" }
+    );
+    const logged = stderr.mock.calls.map((c) => String(c[0])).join("\n");
+    expect(logged).toMatch(/Warning.*EMPTY_VAR.*empty/);
+    stderr.mockRestore();
   });
 });
 
