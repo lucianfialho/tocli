@@ -21,7 +21,7 @@ const program = new Command();
 program
   .name("spec2cli")
   .description("Turn any OpenAPI spec into a CLI. No code generation, no build step.")
-  .version("0.5.0")
+  .version("0.6.0")
   .addHelpText("after", `
 Commands (registry):
   use <api> [args...]     Use an API from the registry
