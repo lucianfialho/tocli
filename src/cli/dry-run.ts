@@ -25,6 +25,8 @@ export function printDryRun(op: Operation, params: Record<string, unknown>, conf
     headers.push(`Authorization: Bearer ${config.auth.value}`);
   } else if (config.auth.type === "apiKey") {
     headers.push(`${config.auth.headerName ?? "X-API-Key"}: ${config.auth.value}`);
+  } else if (config.auth.type === "basic") {
+    headers.push(`Authorization: Basic ${Buffer.from(config.auth.value).toString("base64")}`);
   } else if (config.auth.type === "headers" && config.auth.headers) {
     for (const [k, v] of Object.entries(config.auth.headers)) {
       headers.push(`${k}: ${v}`);

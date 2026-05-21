@@ -68,6 +68,8 @@ async function handleUse(args: string[]): Promise<void> {
     tocliArgs.push("--token", token);
   } else if (token && template.authType === "apiKey") {
     tocliArgs.push("--api-key", token);
+  } else if (token && template.authType === "basic") {
+    tocliArgs.push("--basic", token);
   }
 
   const remaining = args.slice(1);
@@ -166,7 +168,7 @@ async function handleAdd(args: string[]): Promise<void> {
     categories: ["custom"],
     specUrl: specValue,
     baseUrl: baseUrl ?? (isUrl ? specSource.replace(/\/openapi\.(json|yaml)$/, "") : "http://localhost:3000"),
-    authType: (getFlagValue(args, "--auth-type") ?? "none") as "bearer" | "apiKey" | "none",
+    authType: (getFlagValue(args, "--auth-type") ?? "none") as "bearer" | "apiKey" | "basic" | "none",
     authEnvVar: getFlagValue(args, "--auth-env") ?? "",
   });
 

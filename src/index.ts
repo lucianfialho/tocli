@@ -90,6 +90,7 @@ async function main() {
       {
         token: getFlagValue(rawArgs, "--token"),
         apiKey: getFlagValue(rawArgs, "--api-key"),
+        basic: getFlagValue(rawArgs, "--basic"),
         headers: parseHeaderArgs(rawArgs),
         profile: getFlagValue(rawArgs, "--profile"),
         rcAuthType,

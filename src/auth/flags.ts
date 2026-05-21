@@ -5,6 +5,7 @@ import { getProfile } from "./config.js";
 export interface AuthFlags {
   token?: string;
   apiKey?: string;
+  basic?: string;
   authHeader?: string;
   headers?: Record<string, string>;
   profile?: string;
@@ -32,6 +33,13 @@ export async function resolveAuth(
   if (flags.apiKey) {
     const headerName = detectApiKeyHeader(spec) ?? "X-API-Key";
     return { type: "apiKey", value: resolveEnvVar(flags.apiKey, env, "--api-key"), headerName };
+  }
+  if (flags.basic) {
+    const value = resolveEnvVar(flags.basic, env, "--basic");
+    if (!value.includes(":")) {
+      console.error(`Warning: --basic expects "user:password" format, got value without colon.`);
+    }
+    return { type: "basic", value };
   }
   if (flags.authHeader) {
     return { type: "bearer", value: resolveEnvVar(flags.authHeader, env, "--auth-header") };

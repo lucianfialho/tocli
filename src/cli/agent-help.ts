@@ -76,6 +76,7 @@ export function resolveAuthHint(spec: OpenAPISpec): string {
 
   for (const scheme of Object.values(schemes)) {
     if (scheme.type === "http" && scheme.scheme === "bearer") return "bearer --token <TOKEN>";
+    if (scheme.type === "http" && scheme.scheme === "basic") return "basic --basic <USER:PASSWORD>";
     if (scheme.type === "apiKey") return `apiKey --api-key <KEY> (header: ${scheme.name})`;
   }
 

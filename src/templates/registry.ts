@@ -11,7 +11,7 @@ export interface Template {
   categories: string[];
   specUrl: string;
   baseUrl: string;
-  authType: "bearer" | "apiKey" | "none";
+  authType: "bearer" | "apiKey" | "basic" | "none";
   authHeader?: string;
   authEnvVar: string;
   docs?: string;

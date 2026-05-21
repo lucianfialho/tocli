@@ -115,6 +115,25 @@ describe("resolveAuth", () => {
     const auth = await resolveAuth({ rcAuthToken: "$SECRET_TOK" }, minimalSpec, { SECRET_TOK: "resolved-secret" });
     expect(auth.value).toBe("resolved-secret");
   });
+
+  it("--basic sets basic auth with user:password value", async () => {
+    const auth = await resolveAuth({ basic: "user:pass" }, minimalSpec, {});
+    expect(auth.type).toBe("basic");
+    expect(auth.value).toBe("user:pass");
+  });
+
+  it("--basic resolves env variable", async () => {
+    const auth = await resolveAuth({ basic: "$DATAFORSEO_AUTH" }, minimalSpec, { DATAFORSEO_AUTH: "login:secret" });
+    expect(auth.type).toBe("basic");
+    expect(auth.value).toBe("login:secret");
+  });
+
+  it("--basic takes priority over saved profile", async () => {
+    await saveProfile("default", { type: "bearer", value: "profile-tok" });
+    const auth = await resolveAuth({ basic: "u:p" }, minimalSpec, {});
+    expect(auth.type).toBe("basic");
+    expect(auth.value).toBe("u:p");
+  });
 });
 
 describe("auth config (profile persistence)", () => {

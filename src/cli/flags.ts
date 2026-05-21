@@ -16,7 +16,7 @@ export function getFlagValues(args: string[], flag: string): string[] {
 }
 
 export function filterTocliFlags(argv: string[]): string[] {
-  const valueFlags = new Set(["--spec", "--output", "--max-items", "--token", "--api-key", "--base-url", "--profile", "--env", "--header", "-H"]);
+  const valueFlags = new Set(["--spec", "--output", "--max-items", "--token", "--api-key", "--basic", "--base-url", "--profile", "--env", "--header", "-H"]);
   const boolFlags = new Set(["--verbose", "--quiet", "--dry-run", "--validate", "--agent-help", "--filter-pii"]);
   const result: string[] = [];
   let i = 0;
