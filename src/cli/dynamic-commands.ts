@@ -4,7 +4,8 @@ import { formatOutput } from "../output/formatters.js";
 import { validateResponse } from "../validator/schema.js";
 import { filterPii } from "@lucianfialho/pii-filter";
 import { printDryRun } from "./dry-run.js";
-import { simplifyName } from "./agent-help.js";
+import { commandNamesForGroup } from "./command-names.js";
+import { flagNameForParam, optionKeyForParam, optionValueForParam } from "./options.js";
 import type { RuntimeConfig } from "../executor/types.js";
 import type { OperationGroup, OpenAPISpec } from "../parser/types.js";
 
@@ -16,13 +17,19 @@ export function buildDynamicCommands(
 ): void {
   for (const group of groups) {
     const groupCmd = prog.command(group.tag).description(group.description);
+    const commandNames = commandNamesForGroup(group);
 
-    for (const op of group.operations) {
-      const cmdName = simplifyName(op.id, group.tag);
+    for (const [index, op] of group.operations.entries()) {
+      const cmdName = commandNames[index];
       const cmd = groupCmd.command(cmdName).description(op.summary || op.description);
+      const optionKeys = new Set<string>();
 
       for (const p of op.params) {
-        const flag = `--${p.name} <${p.name}>`;
+        const optionKey = optionKeyForParam(p.name);
+        if (optionKeys.has(optionKey)) continue;
+        optionKeys.add(optionKey);
+        const flagName = flagNameForParam(p.name);
+        const flag = `--${flagName} <${flagName}>`;
         const desc = p.description || p.name;
         if (p.required) {
           cmd.requiredOption(flag, desc);
@@ -36,19 +43,20 @@ export function buildDynamicCommands(
       cmd.action(async (opts: Record<string, unknown>) => {
         const params: Record<string, unknown> = {};
         for (const p of op.params) {
-          if (opts[p.name] === undefined) continue;
+          const value = optionValueForParam(opts, p.name);
+          if (value === undefined) continue;
           if (p.type === "integer" || p.type === "number") {
-            params[p.name] = Number(opts[p.name]);
+            params[p.name] = Number(value);
           } else if (p.type === "boolean") {
-            params[p.name] = opts[p.name] === true || opts[p.name] === "true";
-          } else if ((p.type === "object" || p.type === "array") && typeof opts[p.name] === "string") {
+            params[p.name] = value === true || value === "true";
+          } else if ((p.type === "object" || p.type === "array") && typeof value === "string") {
             try {
-              params[p.name] = JSON.parse(opts[p.name] as string);
+              params[p.name] = JSON.parse(value);
             } catch {
-              params[p.name] = opts[p.name];
+              params[p.name] = value;
             }
           } else {
-            params[p.name] = opts[p.name];
+            params[p.name] = value;
           }
         }
 

@@ -69,6 +69,111 @@ describe("extractOperations", () => {
     expect(petIdParam!.type).toBe("integer");
   });
 
+  it("resolves reusable parameter refs", () => {
+    const spec: OpenAPISpec = {
+      openapi: "3.1.0",
+      info: { title: "API", version: "1.0" },
+      paths: {
+        "/pets": {
+          parameters: [{ $ref: "#/components/parameters/TraceId" }],
+          get: {
+            operationId: "listPets",
+            tags: ["pets"],
+          },
+        },
+      },
+      components: {
+        parameters: {
+          TraceId: {
+            name: "X-Trace-Id",
+            in: "header",
+            required: false,
+            schema: { type: "string" },
+          },
+        },
+      },
+    };
+
+    const groups = extractOperations(spec);
+    const traceParam = groups[0].operations[0].params.find((p) => p.name === "X-Trace-Id");
+
+    expect(traceParam).toBeDefined();
+    expect(traceParam!.in).toBe("header");
+    expect(traceParam!.type).toBe("string");
+  });
+
+  it("skips unresolved parameter refs instead of creating undefined params", () => {
+    const spec: OpenAPISpec = {
+      openapi: "3.1.0",
+      info: { title: "API", version: "1.0" },
+      paths: {
+        "/": {
+          parameters: [{ $ref: "#/components/parameters/Missing" }],
+          get: {
+            operationId: "listItems",
+            tags: ["items"],
+            parameters: [
+              {
+                name: "limit",
+                in: "query",
+                required: false,
+                schema: { type: "integer" },
+              },
+            ],
+          },
+        },
+      },
+      components: {
+        parameters: {},
+      },
+    };
+
+    const groups = extractOperations(spec);
+    const params = groups[0].operations[0].params;
+
+    expect(params.map((p) => p.name)).toEqual(["limit"]);
+  });
+
+  it("deduplicates repeated parameter names within an operation", () => {
+    const spec: OpenAPISpec = {
+      openapi: "3.1.0",
+      info: { title: "API", version: "1.0" },
+      paths: {
+        "/images": {
+          post: {
+            operationId: "createImage",
+            tags: ["images"],
+            parameters: [
+              {
+                name: "labels",
+                in: "query",
+                required: false,
+                schema: { type: "string" },
+              },
+            ],
+            requestBody: {
+              content: {
+                "application/json": {
+                  schema: {
+                    type: "object",
+                    properties: {
+                      labels: { type: "array", items: { type: "string" } },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    };
+
+    const groups = extractOperations(spec);
+    const params = groups[0].operations[0].params;
+
+    expect(params.filter((p) => p.name === "labels")).toHaveLength(1);
+  });
+
   it("extracts query params with enums", async () => {
     const spec = await loadSpec(FIXTURE);
     const groups = extractOperations(spec);

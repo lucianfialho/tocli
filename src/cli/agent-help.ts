@@ -1,4 +1,5 @@
 import { stringify as toYaml } from "yaml";
+import { commandNamesForGroup } from "./command-names.js";
 import type { OperationGroup, OpenAPISpec } from "../parser/types.js";
 
 export function printAgentHelp(groups: OperationGroup[], spec: OpenAPISpec): void {
@@ -21,9 +22,10 @@ export function printAgentHelp(groups: OperationGroup[], spec: OpenAPISpec): voi
 
   for (const group of groups) {
     const groupCmds: Record<string, unknown> = {};
+    const commandNames = commandNamesForGroup(group);
 
-    for (const op of group.operations) {
-      const cmdName = simplifyName(op.id, group.tag);
+    for (const [index, op] of group.operations.entries()) {
+      const cmdName = commandNames[index];
       const cmd: Record<string, unknown> = {
         method: op.method,
         desc: op.summary || op.description,
@@ -80,19 +82,6 @@ export function resolveAuthHint(spec: OpenAPISpec): string {
   }
 
   return "none";
-}
-
-export function simplifyName(operationId: string, tag: string): string {
-  const tagLower = tag.toLowerCase();
-  const idLower = operationId.toLowerCase();
-  const singular = tagLower.endsWith("s") ? tagLower.slice(0, -1) : tagLower;
-
-  for (const suffix of [tagLower, singular]) {
-    if (idLower.endsWith(suffix) && idLower.length > suffix.length) {
-      return operationId.slice(0, operationId.length - suffix.length).toLowerCase();
-    }
-  }
-  return operationId.toLowerCase();
 }
 
 export function resolveBaseUrl(spec: OpenAPISpec, specSource: string): string {

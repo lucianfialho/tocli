@@ -19,6 +19,9 @@ spec2cli reads OpenAPI 3.x and Swagger 2.0 specs at runtime and dynamically gene
 # Try it with any OpenAPI spec
 npx spec2cli --spec https://petstore3.swagger.io/api/v3/openapi.json pets --help
 
+# Or run it from a pnpm project without installing
+pnpm dlx spec2cli --spec https://petstore3.swagger.io/api/v3/openapi.json pets --help
+
 # Or install globally
 npm install -g spec2cli
 ```
@@ -134,6 +137,28 @@ spec2cli --spec api.yaml pets --help      # shows subcommands
 spec2cli --spec api.yaml pets create --help  # shows flags with types
 ```
 
+### Large remote specs
+
+spec2cli can read large YAML or JSON specs directly from URLs. Use the raw file URL for GitHub-hosted specs, not the `github.com/.../blob/...` page URL.
+
+```bash
+# Inspect Stripe's public OpenAPI spec without cloning this repo or installing globally
+pnpm dlx spec2cli \
+  --spec https://raw.githubusercontent.com/stripe/openapi/master/openapi/spec3.yaml \
+  --agent-help
+
+# Explore generated commands from another project
+pnpm dlx spec2cli \
+  --spec https://raw.githubusercontent.com/stripe/openapi/master/openapi/spec3.yaml \
+  default --help
+
+# Run an authenticated request
+pnpm dlx spec2cli \
+  --spec https://raw.githubusercontent.com/stripe/openapi/master/openapi/spec3.yaml \
+  --token "$STRIPE_SECRET_KEY" \
+  default getbalance
+```
+
 ### Debug
 
 ```bash
@@ -151,7 +176,7 @@ spec2cli --spec api.yaml --verbose pets get --petId 1
 - Auth: Bearer token, API key, with persistent profiles
 - Project config (`.toclirc`) with multiple environments
 - Verbose mode for debugging requests
-- Works with `npx` (zero install)
+- Works with `npx` and `pnpm dlx` (zero install)
 
 ## Development
 

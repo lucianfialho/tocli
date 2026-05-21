@@ -2,6 +2,8 @@ import { Command } from "commander";
 import type { OperationGroup, Operation, OpenAPISpec } from "../parser/types.js";
 import type { RuntimeConfig } from "./types.js";
 import { executeRequest } from "./http.js";
+import { commandNamesForGroup } from "../cli/command-names.js";
+import { flagNameForParam, optionKeyForParam, optionValueForParam } from "../cli/options.js";
 
 export function buildCommands(
   program: Command,
@@ -13,9 +15,10 @@ export function buildCommands(
     const groupCmd = program
       .command(group.tag)
       .description(group.description);
+    const commandNames = commandNamesForGroup(group);
 
-    for (const op of group.operations) {
-      const cmdName = simplifyName(op.id, group.tag);
+    for (const [index, op] of group.operations.entries()) {
+      const cmdName = commandNames[index];
       const cmd = groupCmd
         .command(cmdName)
         .description(op.summary || op.description);
@@ -52,8 +55,13 @@ export function buildCommands(
 }
 
 function addParams(cmd: Command, op: Operation): void {
+  const optionKeys = new Set<string>();
   for (const p of op.params) {
-    const flag = `--${p.name} <${p.name}>`;
+    const optionKey = optionKeyForParam(p.name);
+    if (optionKeys.has(optionKey)) continue;
+    optionKeys.add(optionKey);
+    const flagName = flagNameForParam(p.name);
+    const flag = `--${flagName} <${flagName}>`;
     const desc = p.description || p.name;
 
     if (p.enum) {
@@ -63,7 +71,7 @@ function addParams(cmd: Command, op: Operation): void {
         cmd.option(flag, desc);
       }
     } else if (p.type === "boolean") {
-      cmd.option(`--${p.name}`, desc);
+      cmd.option(`--${flagName}`, desc);
     } else if (p.required) {
       cmd.requiredOption(flag, desc);
     } else {
@@ -83,7 +91,7 @@ function collectParams(
   const params: Record<string, unknown> = {};
 
   for (const p of op.params) {
-    const value = opts[p.name];
+    const value = optionValueForParam(opts, p.name);
     if (value === undefined) continue;
 
     // Type coercion
@@ -113,18 +121,4 @@ function collectParams(
   }
 
   return params;
-}
-
-function simplifyName(operationId: string, tag: string): string {
-  const tagLower = tag.toLowerCase();
-  const idLower = operationId.toLowerCase();
-  const singular = tagLower.endsWith("s") ? tagLower.slice(0, -1) : tagLower;
-
-  for (const suffix of [tagLower, singular]) {
-    if (idLower.endsWith(suffix) && idLower.length > suffix.length) {
-      return operationId.slice(0, operationId.length - suffix.length).toLowerCase();
-    }
-  }
-
-  return operationId.toLowerCase();
 }

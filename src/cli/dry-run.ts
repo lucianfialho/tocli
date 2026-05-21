@@ -1,20 +1,9 @@
 import type { Operation } from "../parser/types.js";
 import type { RuntimeConfig } from "../executor/types.js";
+import { buildOperationUrl } from "../executor/url.js";
 
 export function printDryRun(op: Operation, params: Record<string, unknown>, config: RuntimeConfig): void {
-  let path = op.path;
-  for (const p of op.params) {
-    if (p.in === "path" && params[p.name] !== undefined) {
-      path = path.replace(`{${p.name}}`, String(params[p.name]));
-    }
-  }
-  const base = config.baseUrl.endsWith("/") ? config.baseUrl.slice(0, -1) : config.baseUrl;
-  const url = new URL(base + path);
-  for (const p of op.params) {
-    if (p.in === "query" && params[p.name] !== undefined) {
-      url.searchParams.set(p.name, String(params[p.name]));
-    }
-  }
+  const url = buildOperationUrl(op, params, config.baseUrl);
 
   const headers: string[] = [];
   if (["POST", "PUT", "PATCH"].includes(op.method)) {
@@ -37,7 +26,7 @@ export function printDryRun(op: Operation, params: Record<string, unknown>, conf
     if (params[p.name] !== undefined) body[p.name] = params[p.name];
   }
 
-  console.log(`${op.method} ${url.toString()}`);
+  console.log(`${op.method} ${url}`);
   for (const h of headers) console.log(h);
   if (Object.keys(body).length > 0) {
     console.log("");
@@ -45,7 +34,7 @@ export function printDryRun(op: Operation, params: Record<string, unknown>, conf
   }
 
   console.log("");
-  let curl = `curl -X ${op.method} '${url.toString()}'`;
+  let curl = `curl -X ${op.method} '${url}'`;
   for (const h of headers) curl += ` \\\n  -H '${h}'`;
   if (Object.keys(body).length > 0) curl += ` \\\n  -d '${JSON.stringify(body)}'`;
   console.log(curl);

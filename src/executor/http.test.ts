@@ -73,6 +73,31 @@ describe("executeRequest", () => {
     vi.unstubAllGlobals();
   });
 
+  it("moves query-like path fragments into search params", async () => {
+    const op = makeOp({
+      id: "startImport",
+      path: "/#mode=preview",
+      params: [
+        { name: "mode", in: "query", type: "enum", required: true, description: "", enum: ["preview"] },
+        { name: "fileId", in: "query", type: "string", required: true, description: "" },
+      ],
+    });
+
+    vi.stubGlobal("fetch", vi.fn().mockResolvedValue({
+      status: 200,
+      statusText: "OK",
+      headers: new Map([["content-type", "application/json"]]),
+      text: () => Promise.resolve(JSON.stringify({})),
+    }));
+
+    await executeRequest(op, { mode: "preview", fileId: "file-123" }, NO_AUTH, "http://localhost:3000");
+
+    const calledUrl = (fetch as ReturnType<typeof vi.fn>).mock.calls[0][0] as string;
+    expect(calledUrl).toBe("http://localhost:3000/?mode=preview&fileId=file-123");
+
+    vi.unstubAllGlobals();
+  });
+
   it("sends JSON body for POST requests", async () => {
     const op = makeOp({
       id: "createPet",

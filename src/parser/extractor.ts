@@ -4,6 +4,7 @@ import type {
   Operation,
   Param,
   OperationObject,
+  ParameterLike,
   ParameterObject,
   SchemaObject,
   SecurityRequirement,
@@ -107,22 +108,32 @@ function capitalize(s: string): string {
 
 function extractParams(
   op: OperationObject,
-  pathLevelParams: ParameterObject[],
+  pathLevelParams: ParameterLike[],
   spec: OpenAPISpec
 ): Param[] {
   const params: Param[] = [];
-  const seen = new Set<string>();
+  const seenLocations = new Set<string>();
+  const seenNames = new Set<string>();
 
   // Operation-level params override path-level
-  for (const p of op.parameters ?? []) {
-    seen.add(`${p.in}:${p.name}`);
+  for (const rawParam of op.parameters ?? []) {
+    const p = resolveParameter(rawParam, spec);
+    if (!p) continue;
+    const key = `${p.in}:${p.name}`;
+    if (seenLocations.has(key) || seenNames.has(p.name)) continue;
+    seenLocations.add(key);
+    seenNames.add(p.name);
     params.push(paramFromSpec(p));
   }
 
   // Add path-level params not overridden
-  for (const p of pathLevelParams) {
-    if (!seen.has(`${p.in}:${p.name}`)) {
+  for (const rawParam of pathLevelParams) {
+    const p = resolveParameter(rawParam, spec);
+    if (!p) continue;
+    if (!seenLocations.has(`${p.in}:${p.name}`) && !seenNames.has(p.name)) {
       params.push(paramFromSpec(p));
+      seenLocations.add(`${p.in}:${p.name}`);
+      seenNames.add(p.name);
     }
   }
 
@@ -134,8 +145,9 @@ function extractParams(
       if (schema.properties) {
         const requiredFields = schema.required ?? [];
         for (const [name, prop] of Object.entries(schema.properties)) {
-          if (seen.has(`body:${name}`) || seen.has(`query:${name}`) || seen.has(`path:${name}`) || seen.has(`header:${name}`)) continue;
-          seen.add(`body:${name}`);
+          if (seenNames.has(name)) continue;
+          seenLocations.add(`body:${name}`);
+          seenNames.add(name);
           const resolved = resolveSchema(prop, spec);
           params.push({
             name,
@@ -152,6 +164,20 @@ function extractParams(
   }
 
   return params;
+}
+
+function resolveParameter(param: ParameterLike, spec: OpenAPISpec): ParameterObject | undefined {
+  if ("$ref" in param) {
+    const resolved = resolveRef<ParameterObject>(param.$ref, spec);
+    return isParameterObject(resolved) ? resolved : undefined;
+  }
+
+  return isParameterObject(param) ? param : undefined;
+}
+
+function isParameterObject(value: unknown): value is ParameterObject {
+  const param = value as Partial<ParameterObject> | undefined;
+  return typeof param?.name === "string" && typeof param?.in === "string";
 }
 
 function paramFromSpec(p: ParameterObject): Param {
@@ -178,13 +204,22 @@ function schemaToType(schema: SchemaObject): string {
 
 function resolveSchema(schema: SchemaObject, spec: OpenAPISpec): SchemaObject {
   if (schema.$ref) {
-    // #/components/schemas/Pet → components.schemas.Pet
-    const parts = schema.$ref.replace("#/", "").split("/");
-    let resolved: unknown = spec;
-    for (const part of parts) {
-      resolved = (resolved as Record<string, unknown>)?.[part];
-    }
-    return (resolved as SchemaObject) ?? schema;
+    return resolveRef<SchemaObject>(schema.$ref, spec) ?? schema;
   }
   return schema;
+}
+
+function resolveRef<T>(ref: string, spec: OpenAPISpec): T | undefined {
+  if (!ref.startsWith("#/")) return undefined;
+
+  const parts = ref
+    .slice(2)
+    .split("/")
+    .map((part) => part.replace(/~1/g, "/").replace(/~0/g, "~"));
+  let resolved: unknown = spec;
+  for (const part of parts) {
+    if (resolved === null || typeof resolved !== "object") return undefined;
+    resolved = (resolved as Record<string, unknown>)[part];
+  }
+  return resolved as T | undefined;
 }

@@ -1,6 +1,7 @@
 import type { Operation } from "../parser/types.js";
 import type { AuthConfig, HttpResponse } from "./types.js";
 import { maskToken } from "../auth/config.js";
+import { buildOperationUrl } from "./url.js";
 
 export async function executeRequest(
   op: Operation,
@@ -9,7 +10,7 @@ export async function executeRequest(
   baseUrl: string,
   verbose = false
 ): Promise<HttpResponse> {
-  const url = buildUrl(op, params, baseUrl);
+  const url = buildOperationUrl(op, params, baseUrl);
   const headers = buildHeaders(op, params, auth);
   const body = buildBody(op, params);
   const method = op.method;
@@ -60,33 +61,6 @@ export async function executeRequest(
   }
 
   return { status: res.status, headers: responseHeaders, data };
-}
-
-function buildUrl(
-  op: Operation,
-  params: Record<string, unknown>,
-  baseUrl: string
-): string {
-  // Substitute path params
-  let path = op.path;
-  for (const p of op.params) {
-    if (p.in === "path" && params[p.name] !== undefined) {
-      path = path.replace(`{${p.name}}`, String(params[p.name]));
-    }
-  }
-
-  // Ensure baseUrl trailing slash doesn't break path joining
-  const normalizedBase = baseUrl.endsWith("/") ? baseUrl.slice(0, -1) : baseUrl;
-  const url = new URL(normalizedBase + path);
-
-  // Add query params
-  for (const p of op.params) {
-    if (p.in === "query" && params[p.name] !== undefined) {
-      url.searchParams.set(p.name, String(params[p.name]));
-    }
-  }
-
-  return url.toString();
 }
 
 function buildHeaders(
